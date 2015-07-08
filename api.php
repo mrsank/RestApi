@@ -99,6 +99,35 @@
 			$error = array('status' => "Failed", "msg" => "Invalid Email address or Password");
 			$this->response($this->json($error), 400);
 		}
+
+		private function createUser(){
+			if($this->get_request_method() != "PUT"){
+				$this->response('',406);
+			}
+
+			$name = $this->_request['name'];
+			$email = $this->_request['email'];
+			$password = $this->_request['pwd'];
+			$status = 1;
+
+			// Checking if the user with same email already exist
+			$sql = mysql_query("SELECT user_id, user_fullname, user_email FROM users WHERE user_email = '$email'", $this->db);
+			if(mysql_num_rows($sql) > 0){
+				$result = array('status' => "Failed", "msg" => "User already exist");
+				$this->response($this->json($result), 200);
+			}
+
+			// Creating user if user with already existing email not found inside
+			if(!empty($name) and !empty($email) and !empty($password)){
+				if(filter_var($email, FILTER_VALIDATE_EMAIL)){
+					$query = mysql_query("INSERT INTO `users`(`user_fullname`, `user_email`, `user_password`, `user_status`) VALUES ('$name','$email',md5('$password'),$status)", $this->db);
+					$success = array('status' => "Success", "msg" => "Successfully one record added.");
+					$this->response($this->json($success),200);
+				}
+				$this->response($this->json($result), 200);
+			}
+
+		}
 		
 		private function users(){	
 			// Cross validation if the request method is GET else it will return "Not Acceptable" status
@@ -119,11 +148,21 @@
 		
 		private function deleteUser(){
 			// Cross validation if the request method is DELETE else it will return "Not Acceptable" status
-			if($this->get_request_method() != "DELETE"){
+			if($this->get_request_method() != "POST"){	// Method changes to POST from DELETE as DELETE was not working in my pc
 				$this->response('',406);
 			}
 			$id = (int)$this->_request['id'];
-			if($id > 0){				
+
+
+			if($id > 0){
+				// Checking if the user is existing with specefied user id
+				$sql = mysql_query("SELECT user_id, user_fullname, user_email FROM users WHERE user_id = $id", $this->db);
+				if(mysql_num_rows($sql) == 0){
+					$result = array('status' => "Failed", "msg" => "User not found");
+					$this->response($this->json($result), 200);
+				}
+
+				// Deleting the user if existing with specefied id
 				mysql_query("DELETE FROM users WHERE user_id = $id");
 				$success = array('status' => "Success", "msg" => "Successfully one record deleted.");
 				$this->response($this->json($success),200);
